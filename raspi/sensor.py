@@ -1,5 +1,5 @@
 from sensors import humidity, motion
-
+from datetime import datetime
 
 class Sensor():
     def read(self):
@@ -8,7 +8,7 @@ class Sensor():
 
 class DHT(Sensor):
     def read(self):
-        return humidity.read_sensor()
+        return [humidity.humidity, humidity.temperature]
 
 
 class PIR(Sensor):
@@ -34,7 +34,8 @@ def read_all_sensor():
             read_all = [read_all]
         for sensor_value in read_all:
             result.append(sensor_value)
-    return result
+    return datetime.now().ctime(), result
 
 
-print(read_all_sensor())
+while True:
+    print(read_all_sensor())
