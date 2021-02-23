@@ -40,8 +40,9 @@ def read_all_sensor():
 
 
 if __name__ == "__main__":
-    print("Start recording data for 10s")
-    data = ds.record_data(10, read_all_sensor, ["Humidity", "Temperature", "Motion"])
+    print("Start recording data for 300s")
+    LCD.lcd_text("Start recording data for 300s", LCD.LCD_LINE_1)
+    data = ds.record_data(300, read_all_sensor, ["Humidity", "Temperature", "Motion"])
     print("Stop recording")
     print(data)
     print(ds.write_data(data))
