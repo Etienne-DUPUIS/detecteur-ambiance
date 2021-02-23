@@ -11,7 +11,11 @@ humidity, temperature = -1, -1
 
 def read_sensor():
     global humidity, temperature
-    humidity, temperature = Adafruit_DHT.read_retry(DHT_11, PIN)
+    temp_humidity, temp_temperature = Adafruit_DHT.read_retry(DHT_11, PIN)
+    if 20 < temp_humidity < 80:
+        humidity = temp_humidity
+    if 0 < temp_temperature < 50:
+        temperature = temp_temperature
 
 
 def next_read():
