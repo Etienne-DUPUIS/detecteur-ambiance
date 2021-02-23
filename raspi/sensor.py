@@ -1,4 +1,4 @@
-from sensors import humidity, motion
+from IO import humidity, motion
 from datetime import datetime
 
 class Sensor():
@@ -16,7 +16,7 @@ class PIR(Sensor):
         return motion.state
 
 
-# Instanciate sensors
+# Instanciate IO
 DHT11 = DHT()
 PIR01 = PIR()
 Sensor_list = [
