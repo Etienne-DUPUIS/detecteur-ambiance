@@ -16,7 +16,6 @@ def read_sensor():
 
 def next_read():
     read_sensor()
-    print(time.ctime())
     threading.Timer(frequency, next_read).start()
 
 next_read()

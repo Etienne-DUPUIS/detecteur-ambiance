@@ -1,6 +1,7 @@
 from IO import humidity, motion, LCD
 from datetime import datetime
 
+
 class Sensor():
     def read(self):
         pass
@@ -37,7 +38,10 @@ def read_all_sensor():
     return datetime.now().ctime(), result
 
 
-while True:
-    timestamp, values = read_all_sensor()
-    LCD.lcd_text(str(timestamp), LCD.LCD_LINE_1)
-    LCD.lcd_text(str(values), LCD.LCD_LINE_2)
+if __name__ == "__main__":
+    while True:
+        timestamp, values = read_all_sensor()
+        LCD.lcd_text(str(timestamp), LCD.LCD_LINE_1)
+        LCD.lcd_text(str(values), LCD.LCD_LINE_2)
+
+
