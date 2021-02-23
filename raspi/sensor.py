@@ -1,4 +1,4 @@
-from IO import humidity, motion
+from IO import humidity, motion, LCD
 from datetime import datetime
 
 class Sensor():
@@ -38,4 +38,6 @@ def read_all_sensor():
 
 
 while True:
-    print(read_all_sensor())
+    timestamp, values = read_all_sensor()
+    LCD.lcd_text(str(timestamp), LCD.LCD_LINE_1)
+    LCD.lcd_text(str(values), LCD.LCD_LINE_2)
