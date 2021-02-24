@@ -4,15 +4,17 @@ import time
 import pandas as pd
 
 log_root = "log/"
-log_path = os.path.join(log_root, time.ctime() + ".csv")
+log_path = os.path.join(log_root, time.ctime())
+data_file_name = "sensor_data.csv"
 
 
 def write_data(df):
     if not os.path.exists(log_root):
         os.makedirs(log_root)
-    with open(log_path, 'w+') as file:
+    file_path = os.path.join(data_file_name)
+    with open(file_path, 'w+') as file:
         file.write(df.to_csv())
-    return log_path
+    return file_path
 
 
 def record_data(timeout_s, sensor_read_callback, ids):
