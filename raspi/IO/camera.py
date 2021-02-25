@@ -14,11 +14,12 @@ i = 0
 
 ## TODO
 ## fonction enregistre pour un temps un nb de fichier dans le dossier
-def record_data(timeout_s, target = 'none'):
+def record_data(timeout_s, target = 'none', update = None):
     tic = time.time()
     while time.time() - tic < timeout_s:
       
       ret, frame = cap.read()
+      update(frame)
       data = write_image(frame, ambiance[target()])
 
 
