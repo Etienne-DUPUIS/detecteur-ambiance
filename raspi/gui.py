@@ -42,202 +42,158 @@
 #############################################################################
 
 
-from PyQt5.QtCore import QDateTime, Qt, QTimer
-from PyQt5.QtWidgets import (QApplication, QCheckBox, QComboBox, QDateTimeEdit,
-        QDial, QDialog, QGridLayout, QGroupBox, QHBoxLayout, QLabel, QLineEdit,
-        QProgressBar, QPushButton, QRadioButton, QScrollBar, QSizePolicy,
-        QSlider, QSpinBox, QStyleFactory, QTableWidget, QTabWidget, QTextEdit,
-        QVBoxLayout, QWidget)
+import threading
+
+from PyQt5.QtCore import Qt
+from PyQt5.QtWidgets import (QApplication, QDialog, QHBoxLayout, QLabel, QLineEdit,
+                             QProgressBar, QPushButton, QSlider, QStyleFactory, QVBoxLayout, QFrame)
+
+import dataset_creation as ds
+import sensor
+from ambiance import ambiance
+
+label_ambianceType = ambiance
+color = ["green", "yellow", "orange", "red"]
+ambianceType = 1
+ambianceLevel = 50
 
 
 class WidgetGallery(QDialog):
     def __init__(self, parent=None):
         super(WidgetGallery, self).__init__(parent)
 
-        self.originalPalette = QApplication.palette()
-
-        styleComboBox = QComboBox()
-        styleComboBox.addItems(QStyleFactory.keys())
-
-        styleLabel = QLabel("&Style:")
-        styleLabel.setBuddy(styleComboBox)
-
-        self.useStylePaletteCheckBox = QCheckBox("&Use style's standard palette")
-        self.useStylePaletteCheckBox.setChecked(True)
-
-        disableWidgetsCheckBox = QCheckBox("&Disable widgets")
-
-        self.createTopLeftGroupBox()
-        self.createTopRightGroupBox()
-        self.createBottomLeftTabWidget()
-        self.createBottomRightGroupBox()
-        self.createProgressBar()
-
-        styleComboBox.activated[str].connect(self.changeStyle)
-        self.useStylePaletteCheckBox.toggled.connect(self.changePalette)
-        disableWidgetsCheckBox.toggled.connect(self.topLeftGroupBox.setDisabled)
-        disableWidgetsCheckBox.toggled.connect(self.topRightGroupBox.setDisabled)
-        disableWidgetsCheckBox.toggled.connect(self.bottomLeftTabWidget.setDisabled)
-        disableWidgetsCheckBox.toggled.connect(self.bottomRightGroupBox.setDisabled)
-
+        mainLayout = QVBoxLayout()
+        # TopLayout
         topLayout = QHBoxLayout()
-        topLayout.addWidget(styleLabel)
-        topLayout.addWidget(styleComboBox)
-        topLayout.addStretch(1)
-        topLayout.addWidget(self.useStylePaletteCheckBox)
-        topLayout.addWidget(disableWidgetsCheckBox)
+        self.ambianceLevel = QProgressBar()
+        self.ambianceLevel.setOrientation(Qt.Vertical)
+        self.ambianceLevel.setValue(ambianceLevel)
+        self.ambianceLevel.setAlignment(Qt.AlignCenter)
+        topLayout.addWidget(self.ambianceLevel)
 
-        mainLayout = QGridLayout()
-        mainLayout.addLayout(topLayout, 0, 0, 1, 2)
-        mainLayout.addWidget(self.topLeftGroupBox, 1, 0)
-        mainLayout.addWidget(self.topRightGroupBox, 1, 1)
-        mainLayout.addWidget(self.bottomLeftTabWidget, 2, 0)
-        mainLayout.addWidget(self.bottomRightGroupBox, 2, 1)
-        mainLayout.addWidget(self.progressBar, 3, 0, 1, 2)
-        mainLayout.setRowStretch(1, 1)
-        mainLayout.setRowStretch(2, 1)
-        mainLayout.setColumnStretch(0, 1)
-        mainLayout.setColumnStretch(1, 1)
+        self.ambianceType = QLabel()
+        self.ambianceType.setText(label_ambianceType[ambianceType])
+        self.ambianceType.setStyleSheet("background-color: {}".format(color[ambianceType]))
+        topLayout.addWidget(self.ambianceType)
+        mainLayout.addLayout(topLayout)
+
+        self.sensor_value = QLabel(text="...")
+        mainLayout.addWidget(self.sensor_value)
+
+        # Bottom layout
+        bottomLayout = QHBoxLayout()
+        recordLayout = QVBoxLayout()
+
+        self.record_timeout = QLineEdit()
+        recordLayout.addWidget(self.record_timeout)
+
+        self.start_recording = QPushButton(text="Record")
+        self.start_recording.clicked.connect(self.start_recording_fn)
+        recordLayout.addWidget(self.start_recording)
+
+        self.info = QLabel(text="Waiting")
+        recordLayout.addWidget(self.info)
+        self.log = QLabel(text="...")
+        recordLayout.addWidget(self.log)
+
+        bottomLayout.addLayout(recordLayout)
+        bottomLayout.addWidget(QFrame(frameShape=QFrame.VLine))
+
+        # Left pane
+        leftLayout = QHBoxLayout()
+        bottomLeftText = QLabel("Ambiance")
+        leftLayout.addWidget(bottomLeftText)
+        self.slider_ambianceType = QSlider(orientation=Qt.Vertical)
+        self.slider_ambianceType.setValue(ambianceLevel)
+        self.slider_ambianceType.setTickInterval(10)
+        self.slider_ambianceType.setTickPosition(QSlider.TicksBothSides)
+        self.slider_ambianceType.sliderMoved.connect(lambda: self.setAmbianceLevel(self.slider_ambianceType.value()))
+        self.slider_ambianceType.sliderReleased.connect(lambda: self.setAmbianceLevel(self.slider_ambianceType.value()))
+        leftLayout.addWidget(self.slider_ambianceType)
+        bottomLayout.addLayout(leftLayout)
+
+        # Right pane
+        rightLayout = QVBoxLayout()
+        self.bt_0 = QPushButton(text="R")
+        self.bt_0.setStyleSheet("background-color: green")
+        self.bt_0.clicked.connect(lambda: self.setAmbianceType(0))
+        self.bt_1 = QPushButton(text="Ambiance Moyenne")
+        self.bt_1.setStyleSheet("background-color: yellow")
+        self.bt_1.clicked.connect(lambda: self.setAmbianceType(1))
+        self.bt_2 = QPushButton(text="Bonnes idées")
+        self.bt_2.setStyleSheet("background-color: orange")
+        self.bt_2.clicked.connect(lambda: self.setAmbianceType(2))
+        self.bt_3 = QPushButton(text="Grosse Soirée")
+        self.bt_3.setStyleSheet("background-color: red")
+        self.bt_3.clicked.connect(lambda: self.setAmbianceType(3))
+        rightLayout.addWidget(self.bt_3)
+        rightLayout.addWidget(self.bt_2)
+        rightLayout.addWidget(self.bt_1)
+        rightLayout.addWidget(self.bt_0)
+        bottomLayout.addLayout(rightLayout)
+        mainLayout.addLayout(bottomLayout)
+
         self.setLayout(mainLayout)
-
         self.setWindowTitle("Styles")
-        self.changeStyle('Windows')
+        QApplication.setStyle(QStyleFactory.create("Fusion"))
 
-    def changeStyle(self, styleName):
-        QApplication.setStyle(QStyleFactory.create(styleName))
-        self.changePalette()
+    def setAmbianceLevel(self, new_ambianceLevel):
+        global ambianceLevel
+        ambianceLevel = new_ambianceLevel
+        self.ambianceLevel.setValue(ambianceLevel)
+        #self.slider_ambianceType.setValue(ambianceLevel)
 
-    def changePalette(self):
-        if (self.useStylePaletteCheckBox.isChecked()):
-            QApplication.setPalette(QApplication.style().standardPalette())
-        else:
-            QApplication.setPalette(self.originalPalette)
+    def setAmbianceType(self, new_ambianceType):
+        global ambianceType
+        ambianceType = new_ambianceType
+        self.ambianceType.setStyleSheet("background-color: {}".format(color[ambianceType]))
+        self.ambianceType.setText(label_ambianceType[ambianceType])
 
-    def advanceProgressBar(self):
-        curVal = self.progressBar.value()
-        maxVal = self.progressBar.maximum()
-        self.progressBar.setValue(curVal + (maxVal - curVal) // 100)
+    def getAmbianceLevel(self):
+        global ambianceType
+        return ambianceLevel
 
-    def createTopLeftGroupBox(self):
-        self.topLeftGroupBox = QGroupBox("Group 1")
+    def getAmbianceType(self):
+        global ambianceLevel
+        return ambianceType
 
-        radioButton1 = QRadioButton("Radio button 1")
-        radioButton2 = QRadioButton("Radio button 2")
-        radioButton3 = QRadioButton("Radio button 3")
-        radioButton1.setChecked(True)
+    def start_recording_fn(self):
+        timeout_s = int(self.record_timeout.text()) * 60
+        self.info.setText("Start recording for {} minutes".format(timeout_s / 60))
+        print("Start recording for {} minutes".format(timeout_s / 60))
+        print(self.getAmbianceLevel(), self.getAmbianceType())
 
-        checkBox = QCheckBox("Tri-state check box")
-        checkBox.setTristate(True)
-        checkBox.setCheckState(Qt.PartiallyChecked)
+        sensor_record_thread = threading.Thread(target=
+                                             lambda: ds.record_and_save(
+                                                 ds.record_data(
+                                                     timeout_s,
+                                                     sensor.read_all_sensor,
+                                                     ["Humidity", "Temperature", "Motion"],
+                                                     self.update_sensor,
+                                                     (self.getAmbianceLevel, self.getAmbianceType),
+                                                     ["AmbianceLevel", "AmbianceType"]
+                                                )
+                                             ))
+        sensor_record_thread.start()
+        self.log.setText("Record will be saved in {}".format(ds.log_path))
 
-        layout = QVBoxLayout()
-        layout.addWidget(radioButton1)
-        layout.addWidget(radioButton2)
-        layout.addWidget(radioButton3)
-        layout.addWidget(checkBox)
-        layout.addStretch(1)
-        self.topLeftGroupBox.setLayout(layout)    
+    def update_sensor(self):
+        from IO.humidity import humidity, temperature
+        from IO.motion import state
+        str = 'Temp: {0:0.1f} C , Humidity: {1:0.1f}%, Motion: {2}'.format(temperature, humidity, state)
+        self.sensor_value.setText(str)
 
-    def createTopRightGroupBox(self):
-        self.topRightGroupBox = QGroupBox("Group 2")
-
-        defaultPushButton = QPushButton("Default Push Button")
-        defaultPushButton.setDefault(True)
-
-        togglePushButton = QPushButton("Toggle Push Button")
-        togglePushButton.setCheckable(True)
-        togglePushButton.setChecked(True)
-
-        flatPushButton = QPushButton("Flat Push Button")
-        flatPushButton.setFlat(True)
-
-        layout = QVBoxLayout()
-        layout.addWidget(defaultPushButton)
-        layout.addWidget(togglePushButton)
-        layout.addWidget(flatPushButton)
-        layout.addStretch(1)
-        self.topRightGroupBox.setLayout(layout)
-
-    def createBottomLeftTabWidget(self):
-        self.bottomLeftTabWidget = QTabWidget()
-        self.bottomLeftTabWidget.setSizePolicy(QSizePolicy.Preferred,
-                QSizePolicy.Ignored)
-
-        tab1 = QWidget()
-        tableWidget = QTableWidget(10, 10)
-
-        tab1hbox = QHBoxLayout()
-        tab1hbox.setContentsMargins(5, 5, 5, 5)
-        tab1hbox.addWidget(tableWidget)
-        tab1.setLayout(tab1hbox)
-
-        tab2 = QWidget()
-        textEdit = QTextEdit()
-
-        textEdit.setPlainText("Twinkle, twinkle, little star,\n"
-                              "How I wonder what you are.\n" 
-                              "Up above the world so high,\n"
-                              "Like a diamond in the sky.\n"
-                              "Twinkle, twinkle, little star,\n" 
-                              "How I wonder what you are!\n")
-
-        tab2hbox = QHBoxLayout()
-        tab2hbox.setContentsMargins(5, 5, 5, 5)
-        tab2hbox.addWidget(textEdit)
-        tab2.setLayout(tab2hbox)
-
-        self.bottomLeftTabWidget.addTab(tab1, "&Table")
-        self.bottomLeftTabWidget.addTab(tab2, "Text &Edit")
-
-    def createBottomRightGroupBox(self):
-        self.bottomRightGroupBox = QGroupBox("Group 3")
-        self.bottomRightGroupBox.setCheckable(True)
-        self.bottomRightGroupBox.setChecked(True)
-
-        lineEdit = QLineEdit('s3cRe7')
-        lineEdit.setEchoMode(QLineEdit.Password)
-
-        spinBox = QSpinBox(self.bottomRightGroupBox)
-        spinBox.setValue(50)
-
-        dateTimeEdit = QDateTimeEdit(self.bottomRightGroupBox)
-        dateTimeEdit.setDateTime(QDateTime.currentDateTime())
-
-        slider = QSlider(Qt.Horizontal, self.bottomRightGroupBox)
-        slider.setValue(40)
-
-        scrollBar = QScrollBar(Qt.Horizontal, self.bottomRightGroupBox)
-        scrollBar.setValue(60)
-
-        dial = QDial(self.bottomRightGroupBox)
-        dial.setValue(30)
-        dial.setNotchesVisible(True)
-
-        layout = QGridLayout()
-        layout.addWidget(lineEdit, 0, 0, 1, 2)
-        layout.addWidget(spinBox, 1, 0, 1, 2)
-        layout.addWidget(dateTimeEdit, 2, 0, 1, 2)
-        layout.addWidget(slider, 3, 0)
-        layout.addWidget(scrollBar, 4, 0)
-        layout.addWidget(dial, 3, 1, 2, 1)
-        layout.setRowStretch(5, 1)
-        self.bottomRightGroupBox.setLayout(layout)
-
-    def createProgressBar(self):
-        self.progressBar = QProgressBar()
-        self.progressBar.setRange(0, 10000)
-        self.progressBar.setValue(0)
-
-        timer = QTimer(self)
-        timer.timeout.connect(self.advanceProgressBar)
-        timer.start(1000)
+    # def next_sensor_print(self):
+    #     self.update_sensor()
+    #     threading.Timer(frequency, next_read).start()
+    #
+    # next_read()
 
 
 if __name__ == '__main__':
-
     import sys
 
     app = QApplication(sys.argv)
     gallery = WidgetGallery()
     gallery.show()
-    sys.exit(app.exec_()) 
+    sys.exit(app.exec_())
