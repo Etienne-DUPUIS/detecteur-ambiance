@@ -32,7 +32,8 @@ def write_image(frame, ambiance):
     cv2.imwrite(os.path.join(ambiance_path, "{}.png".format(time.ctime())), frame)
     return
 
-while True:
+if __name__ == "__main__":
+  while True:
     # Capture frame-by-frame
     tic = time.time()
     
@@ -41,5 +42,4 @@ while True:
     #print(frame.shape)
     print(1/(time.time() - tic))
     #time.sleep(1)
-
-cap.release()
+  cap.release()
