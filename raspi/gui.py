@@ -161,7 +161,6 @@ class WidgetGallery(QDialog):
         timeout_s = int(self.record_timeout.text()) * 60
         self.info.setText("Start recording for {} minutes".format(timeout_s / 60))
         print("Start recording for {} minutes".format(timeout_s / 60))
-        print(self.getAmbianceLevel(), self.getAmbianceType())
 
         sensor_record_thread = threading.Thread(target=
                                              lambda: ds.record_and_save(
