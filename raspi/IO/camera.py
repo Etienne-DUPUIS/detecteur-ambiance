@@ -13,28 +13,33 @@ i = 0
 
 
 ## TODO
-def record_data(timeout_s, sensor_read_callback, ids):
+## fonction enregistre pour un temps un nb de fichier dans le dossier
+def record_data(timeout_s, target = 'none'):
     tic = time.time()
-    df = None
     while time.time() - tic < timeout_s:
-        timestamp, data = sensor_read_callback()
+      
+      ret, frame = cap.read()
+      data = write_image(frame, target())
 
-    return df
 
 
-def write_image(image, ambiance):
-    global i
-    i+=1
+def write_image(frame, ambiance):
+    #global i
+    #i+=1
     ambiance_path = os.path.join(log_path, ambiance)
-    cv2.imwrite(os.path.join(ambiance_path, "{:0>2d}.png".format(i)), frame)
-
+    if not os.path.exists(ambiance_path):
+      os.makedirs(ambiance_path)
+    cv2.imwrite(os.path.join(ambiance_path, "{}.png".format(time.ctime())), frame)
+    return
 
 while True:
     # Capture frame-by-frame
+    tic = time.time()
+    
     ret, frame = cap.read()
     write_image(frame, ambiance=ambiance[0])
-    print(frame.shape)
+    #print(frame.shape)
+    print(1/(time.time() - tic))
+    #time.sleep(1)
 
-    time.sleep(1)
-
-##cap.release()
+cap.release()
