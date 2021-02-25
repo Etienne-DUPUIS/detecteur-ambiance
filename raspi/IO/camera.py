@@ -32,7 +32,7 @@ def write_image(frame, ambiance):
     cv2.imwrite(os.path.join(ambiance_path, "{}.png".format(time.ctime())), frame)
     return
 
-if __name__ == "__main__":
+if __name__ == '__main__':
   while True:
     # Capture frame-by-frame
     tic = time.time()
