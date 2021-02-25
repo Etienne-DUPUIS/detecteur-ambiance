@@ -19,8 +19,10 @@ def record_data(timeout_s, target = 'none', update = None):
     while time.time() - tic < timeout_s:
       
       ret, frame = cap.read()
+      frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+      frame = cv2.rotate(src, cv2.ROTATE_180) 
       update(frame)
-      data = write_image(frame, ambiance[target()])
+      write_image(frame, ambiance[target()])
 
 
 
@@ -31,7 +33,6 @@ def write_image(frame, ambiance):
     if not os.path.exists(ambiance_path):
       os.makedirs(ambiance_path)
     cv2.imwrite(os.path.join(ambiance_path, "{}.png".format(time.ctime())), frame)
-    return
 
 if __name__ == '__main__':
   while True:
