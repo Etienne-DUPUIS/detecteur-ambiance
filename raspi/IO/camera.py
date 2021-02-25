@@ -19,7 +19,7 @@ def record_data(timeout_s, target = 'none'):
     while time.time() - tic < timeout_s:
       
       ret, frame = cap.read()
-      data = write_image(frame, target())
+      data = write_image(frame, ambiance[target()])
 
 
 
