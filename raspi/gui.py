@@ -45,12 +45,15 @@
 import threading
 
 from PyQt5.QtCore import Qt
+from PyQt5.QtGui import QPixmap, QImage
 from PyQt5.QtWidgets import (QApplication, QDialog, QHBoxLayout, QLabel, QLineEdit,
                              QProgressBar, QPushButton, QSlider, QStyleFactory, QVBoxLayout, QFrame)
+from thonny.plugins.microbit.api_stubs.builtins import frozenset
 
 import dataset_creation as ds
 import sensor
 from ambiance import ambiance
+from raspi.IO import camera
 
 label_ambianceType = ambiance
 color = ["green", "yellow", "orange", "red"]
@@ -75,6 +78,12 @@ class WidgetGallery(QDialog):
         self.ambianceType.setText(label_ambianceType[ambianceType])
         self.ambianceType.setStyleSheet("background-color: {}".format(color[ambianceType]))
         topLayout.addWidget(self.ambianceType)
+
+        # Camera feedback
+        self.camera = QLabel()
+        self.camera.setPixmap(QPixmap("log/Thu Feb 25 12:54:37 2021/R/57.png"))
+        topLayout.addWidget(self.camera)
+
         mainLayout.addLayout(topLayout)
 
         self.sensor_value = QLabel(text="...")
@@ -141,7 +150,7 @@ class WidgetGallery(QDialog):
         global ambianceLevel
         ambianceLevel = new_ambianceLevel
         self.ambianceLevel.setValue(ambianceLevel)
-        #self.slider_ambianceType.setValue(ambianceLevel)
+        # self.slider_ambianceType.setValue(ambianceLevel)
 
     def setAmbianceType(self, new_ambianceType):
         global ambianceType
@@ -162,17 +171,25 @@ class WidgetGallery(QDialog):
         self.info.setText("Start recording for {} minutes".format(timeout_s / 60))
         print("Start recording for {} minutes".format(timeout_s / 60))
 
-        sensor_record_thread = threading.Thread(target=
-                                             lambda: ds.record_and_save(
-                                                 ds.record_data(
-                                                     timeout_s,
-                                                     sensor.read_all_sensor,
-                                                     ["Humidity", "Temperature", "Motion"],
-                                                     self.update_sensor,
-                                                     (self.getAmbianceLevel, self.getAmbianceType),
-                                                     ["AmbianceLevel", "AmbianceType"]
-                                                )
-                                             ))
+        # Create Threads for sensors & camera
+        sensor_record_thread = threading.Thread(
+            target=
+            lambda: ds.record_and_save(
+                ds.record_data(
+                    timeout_s,
+                    sensor.read_all_sensor,
+                    ["Humidity", "Temperature", "Motion"],
+                    self.update_sensor,
+                    (self.getAmbianceLevel, self.getAmbianceType),
+                    ["AmbianceLevel", "AmbianceType"]
+                )
+            ))
+        camera_record_thread = threading.Thread(
+            target=lambda: camera.record_data(timeout_s, target=self.getAmbianceType, update=self.update_camera)
+        )
+
+        # Start Thread
+        camera_record_thread.start()
         sensor_record_thread.start()
         self.log.setText("Record will be saved in {}".format(ds.log_path))
 
@@ -181,6 +198,10 @@ class WidgetGallery(QDialog):
         from IO.motion import state
         str = 'Temp: {0:0.1f} C , Humidity: {1:0.1f}%, Motion: {2}'.format(temperature, humidity, state)
         self.sensor_value.setText(str)
+
+    def update_camera(self, frame):
+        height, width, depth = frame.shape
+        self.camera.setPixmap(QPixmap(QImage(frame.data, width, height, QImage.Format_RGB888)))
 
     # def next_sensor_print(self):
     #     self.update_sensor()
