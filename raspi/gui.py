@@ -110,7 +110,7 @@ class WidgetGallery(QDialog):
 
         # Left pane
         leftLayout = QHBoxLayout()
-        bottomLeftText = QLabel("Ambiance")
+        bottomLeftText = QLabel("Phako")
         leftLayout.addWidget(bottomLeftText)
         self.slider_ambianceType = QSlider(orientation=Qt.Vertical)
         self.slider_ambianceType.setValue(ambianceLevel)
