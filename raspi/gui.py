@@ -167,7 +167,10 @@ class WidgetGallery(QDialog):
         return ambianceType
 
     def start_recording_fn(self):
-        timeout_s = int(self.record_timeout.text()) * 60
+        try:
+            timeout_s = int(self.record_timeout.text()) * 60
+        except ValueError:
+            timeout_s = int(1) * 60
         self.info.setText("Start recording for {} minutes".format(timeout_s / 60))
         print("Start recording for {} minutes".format(timeout_s / 60))
 
