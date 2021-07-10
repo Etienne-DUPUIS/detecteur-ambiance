@@ -110,16 +110,34 @@ def annotate_objects(annotator, results, labels):
                        '%s\n%.2f' % (labels[obj['class_id']], obj['score']))
 
 
+def get_formatted_results(input_result):
+    output_result = np.zeros((90,))
+    for obj in input_result:
+        print(obj["class_id"])
+        output_result[int(obj["class_id"])] += 1
+    return output_result
+
+
+
+threshold = 0.4
+labels = labels_path
+model = tflite_path
+
+labels = load_labels(labels)
+interpreter = Interpreter(model)
+interpreter.allocate_tensors()
+_, input_height, input_width, _ = interpreter.get_input_details()[0]['shape']
+
+
+def get_mobilenet_prediction(image):
+    image = image.convert('RGB').resize(
+        (input_width, input_height), Image.ANTIALIAS)
+    start_time = time.monotonic()
+    results = detect_objects(interpreter, image, threshold)
+    elapsed_ms = (time.monotonic() - start_time) * 1000
+    return get_formatted_results(results), results
+
 def main():
-    threshold = 0.4
-    labels = labels_path
-    model = tflite_path
-
-    labels = load_labels(labels)
-    interpreter = Interpreter(model)
-    interpreter.allocate_tensors()
-    _, input_height, input_width, _ = interpreter.get_input_details()[0]['shape']
-
     framerate = 30
     with picamera.PiCamera(
             resolution=(CAMERA_WIDTH, CAMERA_HEIGHT), framerate=framerate) as camera:
@@ -130,25 +148,16 @@ def main():
             for _ in camera.capture_continuous(
                     stream, format='jpeg', use_video_port=True):
                 stream.seek(0)
-                image = Image.open(stream).convert('RGB').resize(
-                    (input_width, input_height), Image.ANTIALIAS)
-                start_time = time.monotonic()
-                results = detect_objects(interpreter, image, threshold)
-                time.sleep(1)
-                elapsed_ms = (time.monotonic() - start_time) * 1000
+                image = Image.open(stream)
+                fmt_results, results = get_mobilenet_prediction(image)
 
-                print(results)
-                print(len(results))
-
-                num_person = sum(
-                    [('person' in labels[obj['class_id']]) and (obj["score"] > 0.6) for obj in results]
-                )
                 annotator.clear()
                 annotate_objects(annotator, results, labels)
-                annotator.text([5, 0], '%.1fms' % (elapsed_ms))
-                annotator.text([5, 10], f"{num_person} person(s)")
                 annotator.text([5, 20], f"Framerate {framerate}")
                 annotator.update()
+
+                print(results)
+                time.sleep(2)
 
                 stream.seek(0)
                 stream.truncate()
