@@ -54,25 +54,24 @@ import dataset_creation as ds
 import sensor
 from ambiance import ambiance
 from raspi.IO import camera
+from tflite.detect_picamera import get_mobilenet_prediction
 
 label_ambianceType = ambiance
 color = ["green", "yellow", "orange", "red"]
 ambianceType = 1
-ambianceLevel = 50
 
 
 class WidgetGallery(QDialog):
     def __init__(self, parent=None):
         super(WidgetGallery, self).__init__(parent)
 
+        self.latest_image = None
+        self.fmt_results = None
+        self.results = None
+
         mainLayout = QVBoxLayout()
         # TopLayout
         topLayout = QHBoxLayout()
-        self.ambianceLevel = QProgressBar()
-        self.ambianceLevel.setOrientation(Qt.Vertical)
-        self.ambianceLevel.setValue(ambianceLevel)
-        self.ambianceLevel.setAlignment(Qt.AlignCenter)
-        topLayout.addWidget(self.ambianceLevel)
 
         self.ambianceType = QLabel()
         self.ambianceType.setText(label_ambianceType[ambianceType])
@@ -111,14 +110,6 @@ class WidgetGallery(QDialog):
         # Left pane
         leftLayout = QHBoxLayout()
         bottomLeftText = QLabel("Phako")
-        leftLayout.addWidget(bottomLeftText)
-        self.slider_ambianceType = QSlider(orientation=Qt.Vertical)
-        self.slider_ambianceType.setValue(ambianceLevel)
-        self.slider_ambianceType.setTickInterval(10)
-        self.slider_ambianceType.setTickPosition(QSlider.TicksBothSides)
-        self.slider_ambianceType.sliderMoved.connect(lambda: self.setAmbianceLevel(self.slider_ambianceType.value()))
-        self.slider_ambianceType.sliderReleased.connect(lambda: self.setAmbianceLevel(self.slider_ambianceType.value()))
-        leftLayout.addWidget(self.slider_ambianceType)
         bottomLayout.addLayout(leftLayout)
 
         # Right pane
@@ -146,25 +137,18 @@ class WidgetGallery(QDialog):
         self.setWindowTitle("Styles")
         QApplication.setStyle(QStyleFactory.create("Fusion"))
 
-    def setAmbianceLevel(self, new_ambianceLevel):
-        global ambianceLevel
-        ambianceLevel = new_ambianceLevel
-        self.ambianceLevel.setValue(ambianceLevel)
-        # self.slider_ambianceType.setValue(ambianceLevel)
-
     def setAmbianceType(self, new_ambianceType):
         global ambianceType
         ambianceType = new_ambianceType
         self.ambianceType.setStyleSheet("background-color: {}".format(color[ambianceType]))
         self.ambianceType.setText(label_ambianceType[ambianceType])
 
-    def getAmbianceLevel(self):
-        global ambianceType
-        return ambianceLevel
-
     def getAmbianceType(self):
         global ambianceLevel
         return ambianceType
+
+    def getDetection(self):
+        self.fmt_res, self.results = get_mobilenet_prediction(image=self.latest_image)
 
     def start_recording_fn(self):
         try:
@@ -183,17 +167,18 @@ class WidgetGallery(QDialog):
                     sensor.read_all_sensor,
                     ["Humidity", "Temperature", "Motion"],
                     self.update_sensor,
-                    (self.getAmbianceLevel, self.getAmbianceType),
-                    ["AmbianceLevel", "AmbianceType"]
+                    (self.getAmbianceType,),
+                    ["AmbianceType"]
                 )
             ))
-        camera_record_thread = threading.Thread(
-            target=lambda: camera.record_data(timeout_s, target=self.getAmbianceType, update=self.update_camera)
+
+        object_detection_thread = threading.Thread(
+            target=self.getDetection,
         )
 
         # Start Thread
-        camera_record_thread.start()
         sensor_record_thread.start()
+        object_detection_thread.start()
         self.log.setText("Record will be saved in {}".format(ds.log_path))
 
     def update_sensor(self):
@@ -205,12 +190,6 @@ class WidgetGallery(QDialog):
     def update_camera(self, frame):
         height, width, depth = frame.shape
         self.camera.setPixmap(QPixmap(QImage(frame.data, width, height, QImage.Format_RGB888)))
-
-    # def next_sensor_print(self):
-    #     self.update_sensor()
-    #     threading.Timer(frequency, next_read).start()
-    #
-    # next_read()
 
 
 if __name__ == '__main__':
